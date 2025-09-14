@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './AgentQA.css';
 
+// 定义消息类型
+type Message = {
+  id: number;
+  type: 'agent' | 'user';
+  content: string;
+  timestamp: Date;
+};
+
 const AgentQA = () => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: 'agent',
@@ -12,8 +20,8 @@ const AgentQA = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,7 +34,7 @@ const AgentQA = () => {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now(),
       type: 'user',
       content: inputValue,
@@ -39,7 +47,7 @@ const AgentQA = () => {
 
     // 模拟AI回复
     setTimeout(() => {
-      const agentMessage = {
+      const agentMessage: Message = {
         id: Date.now() + 1,
         type: 'agent',
         content: generateMockResponse(inputValue),
@@ -50,7 +58,7 @@ const AgentQA = () => {
     }, 1000 + Math.random() * 2000);
   };
 
-  const generateMockResponse = (userInput) => {
+  const generateMockResponse = (userInput: string): string => {
     const responses = [
       '这是一个很好的问题！让我来为您详细解答...',
       '根据您的描述，我建议您可以尝试以下几种方法：',
@@ -61,29 +69,18 @@ const AgentQA = () => {
     return responses[Math.floor(Math.random() * responses.length)];
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const formatTime = (timestamp) => {
+  const formatTime = (timestamp: Date): string => {
     return timestamp.toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const clearChat = () => {
-    setMessages([
-      {
-        id: 1,
-        type: 'agent',
-        content: '对话已清空，有什么新的问题需要帮助吗？',
-        timestamp: new Date()
-      }
-    ]);
   };
 
   return (
@@ -156,7 +153,7 @@ const AgentQA = () => {
             ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="输入您的问题..."
             rows={1}
             className="message-input"
@@ -179,6 +176,17 @@ const AgentQA = () => {
       </div>
     </div>
   );
+
+  function clearChat() {
+    setMessages([
+      {
+        id: 1,
+        type: 'agent',
+        content: '对话已清空，有什么新的问题需要帮助吗？',
+        timestamp: new Date()
+      }
+    ]);
+  }
 };
 
 export default AgentQA;
