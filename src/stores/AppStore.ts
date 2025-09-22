@@ -1,16 +1,26 @@
 import { createContainer } from 'unstated-next';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AuthService, { User, LoginData, RegisterData } from '../api/auth';
 
 // 应用全局状态
 function useAppState() {
   // 用户信息
-  const [user, setUser] = useState({
+  const [user, setUser] = useState<{
+    id: string | null;
+    username: string;
+    email: string;
+    role: string;
+    isLoggedIn: boolean;
+  }>({
     id: null,
     username: '',
     email: '',
     role: 'user',
     isLoggedIn: false
   });
+
+  // 认证状态
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // 当前选中的智能体
   const [currentAgent, setCurrentAgent] = useState(null);
@@ -136,6 +146,111 @@ function useAppState() {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
+  // 初始化认证状态
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (AuthService.isLoggedIn()) {
+          const storedUser = AuthService.getStoredUser();
+          if (storedUser) {
+            setUser({
+              id: storedUser._id,
+              username: storedUser.username,
+              email: storedUser.email,
+              role: 'user',
+              isLoggedIn: true
+            });
+          }
+          
+          // 验证token是否仍然有效
+          try {
+            await AuthService.getCurrentUser();
+          } catch (error) {
+            // token无效，清除状态
+            logout();
+          }
+        }
+      } catch (error) {
+        console.error('初始化认证状态失败:', error);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
+
+  // 用户注册
+  const register = async (data: RegisterData) => {
+    try {
+      setIsAuthLoading(true);
+      const response = await AuthService.register(data);
+      if (response.success) {
+        return { success: true, message: '注册成功，请登录' };
+      }
+      throw new Error('注册失败');
+    } catch (error: any) {
+      throw new Error(error.message || '注册失败');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // 用户登录
+  const loginUser = async (data: LoginData) => {
+    try {
+      setIsAuthLoading(true);
+      const response = await AuthService.login(data);
+      
+      if (response.success && response.data) {
+        const userData = response.data.user;
+        setUser({
+          id: userData._id,
+          username: userData.username,
+          email: userData.email,
+          role: 'user',
+          isLoggedIn: true
+        });
+        return { success: true, message: '登录成功' };
+      }
+      throw new Error('登录失败');
+    } catch (error: any) {
+      throw new Error(error.message || '登录失败');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // 用户登出
+  const logoutUser = async () => {
+    try {
+      setIsAuthLoading(true);
+      await AuthService.logout();
+      setUser({
+        id: null,
+        username: '',
+        email: '',
+        role: 'user',
+        isLoggedIn: false
+      });
+      setCurrentAgent(null);
+      return { success: true, message: '登出成功' };
+    } catch (error: any) {
+      // 即使请求失败也要清除本地状态
+      setUser({
+        id: null,
+        username: '',
+        email: '',
+        role: 'user',
+        isLoggedIn: false
+      });
+      setCurrentAgent(null);
+      throw new Error(error.message || '登出失败');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
   return {
     // 状态
     user,
@@ -143,6 +258,7 @@ function useAppState() {
     agents,
     conversations,
     settings,
+    isAuthLoading,
     
     // 方法
     login,
@@ -153,7 +269,12 @@ function useAppState() {
     deleteAgent,
     addMessage,
     clearConversation,
-    updateSettings
+    updateSettings,
+    
+    // 认证方法
+    register,
+    loginUser,
+    logoutUser
   };
 }
 

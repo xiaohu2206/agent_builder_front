@@ -1,11 +1,14 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AppContainer from '../../stores/AppStore';
 import './Navigation.css';
 
 const Navigation = () => {
   const location = useLocation();
-  const { user } = AppContainer.useContainer();
+  const navigate = useNavigate();
+  const { user, logoutUser } = AppContainer.useContainer();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const navItems = [
     {
@@ -39,6 +42,35 @@ const Navigation = () => {
 
   const isSubActive = (path) => {
     return location.pathname === path;
+  };
+
+  // 处理登出
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    setShowUserMenu(false);
+    
+    try {
+      await logoutUser();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('登出失败:', error);
+      // 即使失败也跳转到登录页面
+      navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // 处理用户菜单点击
+  const handleUserMenuClick = () => {
+    setShowUserMenu(!showUserMenu);
+  };
+
+  // 关闭用户菜单
+  const closeUserMenu = () => {
+    setShowUserMenu(false);
   };
 
   return (
@@ -91,19 +123,53 @@ const Navigation = () => {
 
       <div className="nav-footer">
         {user.isLoggedIn ? (
-          <div className="user-info">
-            <div className="user-avatar">
-              {user.username.charAt(0).toUpperCase()}
+          <div className="user-section">
+            <div 
+              className="user-info"
+              onClick={handleUserMenuClick}
+            >
+              <div className="user-avatar">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+              <div className="user-details">
+                <div className="user-name">{user.username}</div>
+                <div className="user-role">{user.role === 'admin' ? '管理员' : '用户'}</div>
+              </div>
+              <div className="user-menu-arrow">
+                {showUserMenu ? '▲' : '▼'}
+              </div>
             </div>
-            <div className="user-details">
-              <div className="user-name">{user.username}</div>
-              <div className="user-role">{user.role === 'admin' ? '管理员' : '用户'}</div>
-            </div>
+            
+            {showUserMenu && (
+              <div className="user-menu">
+                <Link 
+                  to="/profile" 
+                  className="user-menu-item"
+                  onClick={closeUserMenu}
+                >
+                  <span className="menu-icon">👤</span>
+                  个人信息
+                </Link>
+                <button 
+                  className="user-menu-item logout-item"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                >
+                  <span className="menu-icon">🚪</span>
+                  {isLoggingOut ? '登出中...' : '登出'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
-          <button className="login-btn">
-            登录
-          </button>
+          <div className="auth-buttons">
+            <Link to="/login" className="login-btn">
+              登录
+            </Link>
+            <Link to="/register" className="register-btn">
+              注册
+            </Link>
+          </div>
         )}
       </div>
     </nav>
