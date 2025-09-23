@@ -17,7 +17,7 @@ export type Message = {
 export const useAgentQA = () => {
   const abortController = useRef<AbortController | null>(null);
   const [inputValue, setInputValue] = useState('');
-    const [requestOptions, setRequestOptions] = useState({
+  const [requestOptions] = useState({
     baseURL: "http://localhost:3000/api/chat/simple",
     model: 'doubao-1-5-pro-32k-250115',
   });
@@ -32,12 +32,12 @@ export const useAgentQA = () => {
       if (error.name === 'AbortError') {
         return {
           content: '请求已取消',
-          role: 'assistant',
+          role: 'assistant' as const,
         };
       }
       return {
         content: '请求失败，请稍后重试！',
-        role: 'assistant',
+        role: 'assistant' as const,
       };
     },
     transformMessage: (info) => {
@@ -57,7 +57,7 @@ export const useAgentQA = () => {
       
       return {
         content: content,
-        role: 'assistant',
+        role: 'assistant' as const,
       };
     },
     resolveAbortController: (controller) => {

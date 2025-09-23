@@ -24,18 +24,9 @@ import {
   Welcome,
 } from '@ant-design/x';
 import { Avatar, Button, Flex, type GetProp, Space, Spin, message } from 'antd';
-import dayjs from 'dayjs';
 import React, { useState } from 'react';
 import styles from './AgentQA.module.less';
-import { useAgentQA } from './hooks/useAgentQA';
-
-const DEFAULT_CONVERSATIONS_ITEMS = [
-  {
-    key: 'default-0',
-    label: '智能助手对话',
-    group: '今天',
-  },
-];
+import { useAgentQAWithHistory } from './hooks/useAgentQAWithHistory';
 
 const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
   {
@@ -62,25 +53,26 @@ const SENDER_PROMPTS: GetProp<typeof Prompts, 'items'> = [
 
 const AgentQA: React.FC = () => {
   const {
-    messages,
     inputValue,
     isTyping,
     setInputValue,
     handleSendMessage,
-    clearChat,
-    formatTime,
-    handleKeyDown,
     xMessages,
     abortController,
-  } = useAgentQA();
+    // 对话历史相关
+    conversations,
+    currentConversationId,
+    handleSwitchConversation,
+    handleCreateNewConversation,
+    handleDeleteConversation,
+    renameConversation,
+  } = useAgentQAWithHistory();
 
   // 状态管理
-  const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS_ITEMS);
-  const [curConversation, setCurConversation] = useState(DEFAULT_CONVERSATIONS_ITEMS[0].key);
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<GetProp<typeof Attachments, 'items'>>([]);
   const [siderVisible, setSiderVisible] = useState(true); // 新增：侧边栏显示状态
-
+  console.log("xMessages123123", xMessages)
   // 提交处理
   const onSubmit = (val: string) => {
     if (!val) return;
@@ -130,17 +122,7 @@ const AgentQA: React.FC = () => {
             return;
           }
 
-          const now = dayjs().valueOf().toString();
-          setConversations([
-            {
-              key: now,
-              label: `新对话 ${conversations.length + 1}`,
-              group: '今天',
-            },
-            ...conversations,
-          ]);
-          setCurConversation(now);
-          clearChat();
+          handleCreateNewConversation();
         }}
         type="link"
         className={styles.addBtn}
@@ -153,12 +135,11 @@ const AgentQA: React.FC = () => {
       <Conversations
         items={conversations}
         className={styles.conversations}
-        activeKey={curConversation}
+        activeKey={currentConversationId}
         onActiveChange={async (val) => {
           abortController?.abort();
           setTimeout(() => {
-            setCurConversation(val);
-            clearChat();
+            handleSwitchConversation(val);
           }, 100);
         }}
         groupable
@@ -169,6 +150,13 @@ const AgentQA: React.FC = () => {
               label: '重命名',
               key: 'rename',
               icon: <EditOutlined />,
+              onClick: () => {
+                const defaultTitle = typeof conversation.label === 'string' ? conversation.label : '';
+                const newTitle = window.prompt('请输入新的对话标题:', defaultTitle || '');
+                if (newTitle && newTitle.trim()) {
+                  renameConversation(conversation.key, newTitle.trim());
+                }
+              },
             },
             {
               label: '删除',
@@ -176,15 +164,7 @@ const AgentQA: React.FC = () => {
               icon: <DeleteOutlined />,
               danger: true,
               onClick: () => {
-                const newList = conversations.filter((item) => item.key !== conversation.key);
-                const newKey = newList?.[0]?.key;
-                setConversations(newList);
-                setTimeout(() => {
-                  if (conversation.key === curConversation) {
-                    setCurConversation(newKey);
-                    clearChat();
-                  }
-                }, 200);
+                handleDeleteConversation(conversation.key);
               },
             },
           ],

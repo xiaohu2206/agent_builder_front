@@ -1,18 +1,18 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import AppContainer from './stores/AppStore';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import './App.css';
 import Navigation from './components/common/Navigation';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import AgentDetail from './pages/agent-hall/detail/AgentDetail';
-import AgentConfig from './pages/agent-hall/config/AgentConfig';
-import AgentQA from './pages/agent-qa/AgentQA';
 import Admin from './pages/admin/Admin';
+import AgentConfig from './pages/agent-hall/config/AgentConfig';
+import AgentDetail from './pages/agent-hall/detail/AgentDetail';
+import AgentQA from './pages/agent-qa/AgentQA';
 import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
 import Profile from './pages/auth/Profile';
-import './App.css';
+import Register from './pages/auth/Register';
+import AppContainer from './stores/AppStore';
 
 function App() {
+  console.log("App render")
   return (
     <AppContainer.Provider>
       <Router>

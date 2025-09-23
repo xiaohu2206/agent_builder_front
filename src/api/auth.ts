@@ -1,4 +1,5 @@
 import { request } from '../utils/request';
+import { StorageService, User } from '../utils/storage';
 
 // 用户注册请求数据类型
 export interface RegisterData {
@@ -13,17 +14,8 @@ export interface LoginData {
   password: string;
 }
 
-// 用户信息类型
-export interface User {
-  _id: string;
-  username: string;
-  email: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // API响应类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -43,8 +35,9 @@ export class AuthService {
     try {
       const response = await request.post<ApiResponse<User>>('/api/users/', data);
       return response;
-    } catch (error: any) {
-      throw new Error(error.message || '注册失败');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '注册失败';
+      throw new Error(errorMessage);
     }
   }
 
@@ -55,20 +48,21 @@ export class AuthService {
       
       // 登录成功后保存token到localStorage
       if (response.success && response.data?.token) {
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('user_info', JSON.stringify(response.data.user));
+        StorageService.setAuthToken(response.data.token);
+        StorageService.setUserInfo(response.data.user);
       }
       
       return response;
-    } catch (error: any) {
-      throw new Error(error.message || '登录失败');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '登录失败';
+      throw new Error(errorMessage);
     }
   }
 
   // 获取当前用户信息
   static async getCurrentUser(): Promise<ApiResponse<User>> {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = StorageService.getAuthToken();
       if (!token) {
         throw new Error('未找到认证令牌');
       }
@@ -76,19 +70,20 @@ export class AuthService {
       // 添加Authorization头
       const response = await request.get<ApiResponse<User>>('/api/users/me');
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 如果token无效，清除本地存储
-      if (error.message.includes('401') || error.message.includes('unauthorized')) {
+      const errorMessage = error instanceof Error ? error.message : '获取用户信息失败';
+      if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
         AuthService.clearAuthData();
       }
-      throw new Error(error.message || '获取用户信息失败');
+      throw new Error(errorMessage);
     }
   }
 
   // 用户登出
   static async logout(): Promise<ApiResponse> {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = StorageService.getAuthToken();
       if (token) {
         await request.post<ApiResponse>('/api/users/logout');
       }
@@ -97,39 +92,32 @@ export class AuthService {
       AuthService.clearAuthData();
       
       return { success: true, message: '登出成功' };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 即使请求失败也要清除本地数据
       AuthService.clearAuthData();
-      throw new Error(error.message || '登出失败');
+      const errorMessage = error instanceof Error ? error.message : '登出失败';
+      throw new Error(errorMessage);
     }
   }
 
   // 检查是否已登录
   static isLoggedIn(): boolean {
-    const token = localStorage.getItem('auth_token');
-    const userInfo = localStorage.getItem('user_info');
-    return !!(token && userInfo);
+    return StorageService.isLoggedIn();
   }
 
   // 获取本地存储的用户信息
   static getStoredUser(): User | null {
-    try {
-      const userInfo = localStorage.getItem('user_info');
-      return userInfo ? JSON.parse(userInfo) : null;
-    } catch {
-      return null;
-    }
+    return StorageService.getUserInfo();
   }
 
   // 获取本地存储的token
   static getStoredToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return StorageService.getAuthToken();
   }
 
   // 清除认证数据
   static clearAuthData(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_info');
+    StorageService.clearAuthData();
   }
 }
 
@@ -150,7 +138,9 @@ request.addInterceptor({
     if (error.message.includes('401')) {
       AuthService.clearAuthData();
       // 可以在这里触发重定向到登录页面
-      window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   }
 });
